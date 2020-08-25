@@ -1,86 +1,50 @@
 ---
-title: StatefulSetの削除
+title: StatefulSet
 content_type: task
 weight: 60
 ---
 
 <!-- overview -->
 
-このタスクでは、StatefulSetを削除する方法を説明します。
+This task shows you how to delete a {{< glossary_tooltip term_id="StatefulSet" >}}.
 
+{{% heading "prerequisites" %}}
+This task assumes you have an application running on your cluster represented by a StatefulSet.
+Deleting a StatefulSet
+You can delete a StatefulSet in the same way you delete other resources in Kubernetes: use the kubectl delete command, and specify the StatefulSet either by file or by name.
 
-
-## {{% heading "prerequisites" %}}
-
-
-* このタスクは、クラスター上で、StatefulSetで表現されるアプリケーションが実行されていることを前提としています。
-
-
-
-<!-- steps -->
-
-## StatefulSetの削除
-
-Kubernetesで他のリソースを削除するのと同じ方法でStatefulSetを削除することができます。つまり、`kubectl delete`コマンドを使い、StatefulSetをファイルまたは名前で指定します。
-
-```shell
 kubectl delete -f <file.yaml>
-```
-
-```shell
 kubectl delete statefulsets <statefulset-name>
-```
+You may need to delete the associated headless service separately after the StatefulSet itself is deleted.
 
-StatefulSet自体が削除された後で、関連するヘッドレスサービスを個別に削除する必要があるかもしれません。
-
-```shell
 kubectl delete service <service-name>
-```
+Deleting a StatefulSet through kubectl will scale it down to 0, thereby deleting all pods that are a part of it. If you want to delete just the StatefulSet and not the pods, use --cascade=false.
 
-kubectlを使ってStatefulSetを削除すると0にスケールダウンされ、すべてのPodが削除されます。PodではなくStatefulSetだけを削除したい場合は、`--cascade=false`を使用してください。
-
-```shell
 kubectl delete -f <file.yaml> --cascade=false
-```
+By passing --cascade=false to kubectl delete, the Pods managed by the StatefulSet are left behind even after the StatefulSet object itself is deleted. If the pods have a label app=myapp, you can then delete them as follows:
 
-`--cascade=false`を`kubectl delete`に渡すことで、StatefulSetオブジェクト自身が削除された後でも、StatefulSetによって管理されていたPodは残ります。Podに`app=myapp`というラベルが付いている場合は、次のようにして削除できます:
-
-```shell
 kubectl delete pods -l app=myapp
-```
+Persistent Volumes
+Deleting the Pods in a StatefulSet will not delete the associated volumes. This is to ensure that you have the chance to copy data off the volume before deleting it. Deleting the PVC after the pods have terminated might trigger deletion of the backing Persistent Volumes depending on the storage class and reclaim policy. You should never assume ability to access a volume after claim deletion.
 
-### 永続ボリューム
+{{< note >}} Use caution when deleting a PVC, as it may lead to data loss. {{< /note >}}
 
-StatefulSet内のPodを削除しても、関連付けられているボリュームは削除されません。これは、削除する前にボリュームからデータをコピーする機会があることを保証するためです。Podが[終了状態](/ja/docs/concepts/workloads/pods/pod/#termination-of-pods)になった後にPVCを削除すると、ストレージクラスと再利用ポリシーによっては、背後にある永続ボリュームの削除がトリガーされることがあります。決してクレーム削除後にボリュームにアクセスできると想定しないでください。
+Complete deletion of a StatefulSet
+To simply delete everything in a StatefulSet, including the associated pods, you can run a series of commands similar to the following:
 
-{{< note >}}
-データを損失する可能性があるため、PVCを削除するときは注意してください。
-{{< /note >}}
-
-### StatefulSetの完全削除
-
-関連付けられたPodを含むStatefulSet内のすべてのものを単純に削除するには、次のような一連のコマンドを実行します:
-
-```shell
 grace=$(kubectl get pods <stateful-set-pod> --template '{{.spec.terminationGracePeriodSeconds}}')
 kubectl delete statefulset -l app=myapp
 sleep $grace
 kubectl delete pvc -l app=myapp
+In the example above, the Pods have the label app=myapp; substitute your own label as appropriate.
 
-```
+Force deletion of StatefulSet pods
+If you find that some pods in your StatefulSet are stuck in the 'Terminating' or 'Unknown' states for an extended period of time, you may need to manually intervene to forcefully delete the pods from the apiserver. This is a potentially dangerous task. Refer to Force Delete StatefulSet Pods for details.
 
-上の例では、Podは`app=myapp`というラベルを持っています。必要に応じてご利用のラベルに置き換えてください。
+{{% heading "whatsnext" %}}
+Learn more about force deleting StatefulSet Pods.
 
-### StatefulSet Podの強制削除
-
-StatefulSet内の一部のPodが長期間`Terminating`または`Unknown`状態のままになっていることが判明した場合は、手動でapiserverからPodを強制的に削除する必要があります。これは潜在的に危険な作業です。詳細は[StatefulSet Podの強制削除](/ja/docs/tasks/run-application/force-delete-stateful-set-pod/)を参照してください。
-
-
-
-## {{% heading "whatsnext" %}}
-
-
-[StatefulSet Podの強制削除](/ja/docs/tasks/run-application/force-delete-stateful-set-pod/)の詳細
+(/ja/docs/tasks/run-application/force-delete-stateful-set-pod/)
 
 
 
